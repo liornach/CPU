@@ -1,178 +1,92 @@
 #ifndef LOGIC_GATES_HPP
 #define LOGIC_GATES_HPP
 
-#include "cassert" // assert
-#include "transistor.hpp" // Transistor
-#include <cassert>
 
-namespace CPU
+namespace CPU::Gate
 {
 
-struct OR
+struct DualGate
 {
-    inline bool Output()
+    virtual bool Output() const = 0;
+    virtual void SetInputA(bool a)
     {
-        if (!ta.Ground())
-        {
-            return tb.Ground();
-        }
-
-        return true;
+        ia = a;
     }
 
-    inline bool SetInputA(bool a)
+    virtual void SetInputB(bool b)
     {
-        return ta.SetControlGate(a);
+        ib = b;
     }
 
-    inline bool SetInputB(bool b)
-    {
-        return tb.SetControlGate(b);
-    }
-
-    inline bool SetCurrent(bool c)
-    {
-        auto changed = ta.SetCurrent(c);
-        if (!changed)
-        {
-            return changed;
-        }
-
-        changed = tb.SetCurrent(c);
-        assert(changed);
-        return changed;
-    }
-
-private:
-    Transistor ta;
-    Transistor tb;
+    virtual ~DualGate() = default;
+protected:
+    bool ia = false;
+    bool ib = false;
 };
 
-struct AND
+struct OR : DualGate
 {
-    inline bool Output()
+    bool Output() const override
     {
-        return tb.Ground();
+        return ia || ib;
     }
+};
 
-    inline bool SetInputA(bool a)
+struct AND : DualGate
+{
+    bool Output() const override
     {
-        if (!ta.SetControlGate(a))
-        {
-            return false;
-        }
-
-        tb.SetCurrent(ta.Ground());
-        return true;
+        return ia && ib;
     }
-
-    inline bool SetInputB(bool b)
-    {
-        return tb.SetControlGate(b);
-    }
-
-    inline bool SetCurrent(bool c)
-    {   
-        if(!ta.SetCurrent(c))
-        {
-            return false;
-        }
-
-        tb.SetCurrent(ta.Ground());
-        return true;
-    }
-
-private:
-    Transistor ta;
-    Transistor tb;
 };
 
 struct NOT 
 {
-    inline bool Output()
+    bool Output() const
     {
-        if (!transistor.Ground())
-        {
-            return false;
-        }
-        
-        return true;
+        return !i;
     }
 
-    inline bool SetInput(bool input)
+    void SetInput(bool input)
     {
-        return transistor.SetControlGate(input);
-    }
-
-    inline bool SetCurrent(bool c)
-    {
-        return transistor.SetCurrent(c);
+        i = input;
     }
 
 private:
-    Transistor transistor;
+    bool i = false;
 };
 
-struct AOI
-{
-    inline bool SetInputA(bool val)
-    {
-        if (!andGate.SetInputA(val))
-        {
-            return false;
-        }
-        
-        orGate.SetInputA(andGate.Output());
-        return true;
-    }
-
-    inline bool SetInputB(bool val)
-    {
-        if (!andGate.SetInputB(val))
-        {
-            return false;
-        }
-        
-        orGate.SetInputA(andGate.Output());
-        return true;
-    }
-
-    inline bool SetInputC(bool val)
-    {
-        return orGate.SetInputB(val);
-    } 
-
-    inline bool Output()
-    {
-        return orGate.Output();
-    }
-private:
-    OR orGate;
-    AND andGate;
-};
 
 struct XOR
 {
-    inline bool SetInputA(bool a)
+    bool Output() const
     {
-        bool orGateChange = orGate.SetInputA(a);
-        if (orGateChange)
-        {
-            aoiGate.SetInputA(orGate.Output());
-        }
+        return aOrBandNotAandB.Output();
+    }
 
-        bool aoiGateChange = aoiGate.SetInputB(a);
-        if (!aoiGateChange && !orGateChange)
-        {
-            return false;
-        }
+    void SetInputA(bool a)
+    {
+        aOrB.SetInputA(a);
+        aAndB.SetInputA(a);
+        notAandB.SetInput(aAndB.Output());
+        aOrBandNotAandB.SetInputA(aOrB.Output());
+        aOrBandNotAandB.SetInputB(notAandB.Output());        
+    }
 
-        return true;
+    void SetInputB(bool b)
+    {
+        aOrB.SetInputB(b);
+        aAndB.SetInputB(b);
+        notAandB.SetInput(aAndB.Output());
+        aOrBandNotAandB.SetInputA(aOrB.Output());
+        aOrBandNotAandB.SetInputB(notAandB.Output());
     }
 
 private:
-    OR orGate;
-    AOI aoiGate;
+    OR aOrB;
+    AND aAndB;
+    NOT notAandB;
+    AND aOrBandNotAandB;
 };
 
 }
