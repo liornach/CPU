@@ -1,4 +1,5 @@
 #include "logic_gates.hpp"
+#include <bitset>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -24,13 +25,13 @@ int main()
     {
         auto a = e.A;
         auto b = e.B;
-        bool exp = a ^ b;
+        std::bitset<1> exp = a ^ b;
         xorGate.InputA.Set(a);
         xorGate.InputB.Set(b);
-        auto res = xorGate.Output();
+        auto res = xorGate.Output.Value();
         if (res != exp)
         {
-            std::string err = "expected : " + std::to_string(exp) + ", result : " + std::to_string(res) + ", input a : " + std::to_string(a) + ", input b : " + std::to_string(b);
+            std::string err = "expected : " + exp.to_string() + ", result : " + res.to_string() + ", input a : " + std::to_string(a) + ", input b : " + std::to_string(b);
             throw std::logic_error(err);
         }
 

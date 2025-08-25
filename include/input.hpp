@@ -1,6 +1,7 @@
 #ifndef INPUT_HPP
 #define INPUT_HPP
 
+#include <bitset>
 #include <cassert>
 #include <functional>
 #include <vector>
@@ -8,10 +9,11 @@
 namespace CPU
 {
 
+template <typename T = std::bitset<1>>
 class InputWire
 {
 public:
-    void Set(bool val)
+    void Set(T val)
     {
         _val = val;
         for (const auto& change : _onChange)
@@ -20,29 +22,29 @@ public:
         }
     }
 
-    void Connect(std::function<void(bool)> onChange)
+    void OnChange(std::function<void(T)> onChange)
     {
         _onChange.push_back(onChange);
     }
 
-    void Connect(InputWire& other)
+    void Chain(InputWire& other)
     {
-        _onChange.push_back([&](bool v){other.Set(v);});
+        _onChange.push_back([&](T v){other.Set(v);});
     }
 
-    operator std::function<void(bool)>()
+    operator std::function<void(T)>()
     {
-        return [&](bool val){this->Set(val);};
+        return [&](T val){this->Set(val);};
     }
 
-    bool Value() const
+    T Value() const
     {
         return _val;
     }
 
 private:
-    bool _val = false;
-    std::vector<std::function<void(bool)>> _onChange;
+    T _val;
+    std::vector<std::function<void(T)>> _onChange;
 };
 
 }

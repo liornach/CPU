@@ -5,96 +5,80 @@
 #include <cassert>
 #include <functional>
 #include "input.hpp"
+#include "output.hpp"
 
 namespace CPU::Gate
 {
 
 struct Gate
 {
-    Gate()
-    {
-        InputA.Connect([&](bool _){OnChange();});
-    }
-
     virtual ~Gate() = default;
-    InputWire InputA;
-    virtual bool Output() const = 0;
-    
-    virtual void ConnectToOutput(InputWire& input)
-    {
-        assert(_connectedInput == NULL);
-        _connectedInput = &input;
-    }
-    
-    inline void OnChange()
-    {
-        if (!_connectedInput)
-        {
-            return;
-        }
-
-        _connectedInput->Set(Output());
-    }
-
-protected:
-    InputWire *_connectedInput = NULL;
+    InputWire<> InputA;
+    OutputWire<> Output;
 };
 
 struct DualGate : public Gate
 {
-    DualGate()
-    {
-        InputB.Connect([&](bool _){OnChange();});
-    }
     virtual ~DualGate() = default;
-    InputWire InputB;
+    InputWire<> InputB;
+};
+
+struct TripletGate : DualGate
+{
+    virtual ~TripletGate() = default;
+    InputWire<>InputC;
 };
 
 struct OrGate : public DualGate
 {
-    bool Output() const override
+    OrGate()
     {
-        return InputA.Value() || InputB.Value();
+        InputA.OnChange([&](auto v){Output.Set(v | InputB.Value());});
+        InputB.OnChange([&](auto v){Output.Set(v | InputA.Value());});
     }
 };
 
 struct AndGate : public DualGate
 {
-    bool Output() const override
+    AndGate()
     {
-        return InputA.Value() && InputB.Value();
+        InputA.OnChange([&](auto v){Output.Set(v & InputB.Value());});
+        InputB.OnChange([&](auto v){Output.Set(v & InputA.Value());});
     }
 };
 
 struct NotGate : public Gate
 {
-    bool Output() const
+    NotGate()
     {
-        return !InputA.Value();
+        InputA.OnChange([&](auto v){Output.Set(~v);});
     }
 };
 
+struct AoiGate : public TripletGate
+{
+    AoiGate()
+    {
+
+    }
+private:
+
+};
 
 struct XorGate : public DualGate
 {
     XorGate()
     {
-        aAndBGate.ConnectToOutput(notAandBGate.InputA);
-        aOrBGate.ConnectToOutput(aOrBandNotAandB.InputA);
-        notAandBGate.ConnectToOutput(aOrBandNotAandB.InputB);
-        this->InputA.Connect(aOrBGate.InputA);
-        //InputA.Connect([&](bool v){aOrBGate.InputA.Set(v);});
-        //InputA.Connect([&](bool v){aAndBGate.InputA.Set(v);});
-        this->InputA.Connect(aAndBGate.InputA);
-        //InputB.Connect([&](bool v){aOrBGate.InputB.Set(v);});
-        //InputB.Connect([&](bool v){aAndBGate.InputB.Set(v);});
-        this->InputB.Connect(aOrBGate.InputB);
-        this->InputB.Connect(aAndBGate.InputB);
-    }
+        aAndBGate.Output.Chain(notAandBGate.InputA);
+        aOrBGate.Output.Chain(aOrBandNotAandB.InputA);
+        notAandBGate.Output.Chain(aOrBandNotAandB.InputB);
 
-    bool Output() const
-    {
-        return aOrBandNotAandB.Output();
+        this->InputA.Chain(aOrBGate.InputA);
+        this->InputA.Chain(aAndBGate.InputA);
+        this->InputB.Chain(aOrBGate.InputB);
+        this->InputB.Chain(aAndBGate.InputB);
+
+        aOrBandNotAandB.Output.Chain(Output);
     }
 
 private:
