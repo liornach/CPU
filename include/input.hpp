@@ -4,6 +4,7 @@
 #include <bitset>
 #include <cassert>
 #include <functional>
+#include <initializer_list>
 #include <vector>
 
 namespace CPU
@@ -13,6 +14,13 @@ template <typename T = std::bitset<1>>
 class InputWire
 {
 public:
+    InputWire() = default;
+    
+    InputWire(InputWire& other)
+    {
+        this->Chain(other);
+    }
+
     void Set(T val)
     {
         _val = val;

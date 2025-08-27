@@ -13,6 +13,12 @@ template <typename T = std::bitset<1>>
 class OutputWire
 {
 public:
+    OutputWire() = default;
+    OutputWire(OutputWire& other)
+    {
+        other.Chain(this);
+    }
+
     void Set(T val)
     {
         _val = val;
