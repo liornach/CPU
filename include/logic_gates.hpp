@@ -1,130 +1,106 @@
-#ifndef LOGIC_GATES_HPP
-#define LOGIC_GATES_HPP
 
-#include <cassert>
-#include <functional>
-#include "input.hpp"
-#include "output.hpp"
-
-namespace CPU::Gate
+namespace CPU
 {
+
 
 struct Gate
 {
-    Gate() = default;
-    // Gate(OutputWire<>& output) : Output(output) {}
-    // Gate(InputWire<>& input) : InputA(input) {}
-    // Gate(OutputWire<>& output, InputWire<>& input) : InputA(input), Output(output) {}
-
     virtual ~Gate() = default;
-
-    InputWire<> InputA;
-    OutputWire<> Output;
+    virtual bool eval() const = 0;
 };
 
-struct DualGate : public Gate
+
+struct Input : public Gate
 {
-    DualGate() = default;
-    // DualGate(OutputWire<>& output) : Gate(output) {}
-    // DualGate(InputWire<>& a, InputWire<>& b) : Gate(a), InputB(b) {}
-    // DualGate(OutputWire<>& output, InputWire<>& a, InputWire<>& b) : Gate(output, a), InputB(b) {}
+    explicit Input(bool v = false) : val_(v) {}
+    bool eval() const override { return val_; }
+    void set(bool v) { val_ = v; }
 
-    virtual ~DualGate() = default;
-
-    InputWire<> InputB;
+private:
+    bool val_;
 };
 
-struct TripletGate : DualGate
+
+struct NandGate : public Gate
 {
-    TripletGate() = default;
-    // TripletGate(OutputWire<>& output) : DualGate(output) {}
-    // TripletGate(InputWire<>& a, InputWire<>& b, InputWire<>& c) : DualGate(a, b), InputC(c) {}
-    //TripletGate(OutputWire<>& output, InputWire<>& a, InputWire<>& b, InputWire<>& c) : DualGate(output, a, b), InputC(c) {}
-    
-    virtual ~TripletGate() = default;
+    NandGate(Gate* in1, Gate* in2) : a_(in1), b_(in2) {}
+    bool eval() const override { return !(a_->eval() && b_->eval()); }
 
-    InputWire<>InputC;
+private:
+    Gate* a_;
+    Gate* b_;
 };
 
-struct OrGate : public DualGate
-{
-    OrGate()
-    {
-        InputA.OnChange([&](auto v){Output.Set(v | InputB.Value());});
-        InputB.OnChange([&](auto v){Output.Set(v | InputA.Value());});
-    }
-};
-
-struct AndGate : public DualGate
-{
-    AndGate()
-    {
-        InputA.OnChange([&](auto v){Output.Set(v & InputB.Value());});
-        InputB.OnChange([&](auto v){Output.Set(v & InputA.Value());});
-    }
-};
 
 struct NotGate : public Gate
 {
-    NotGate()
-    {
-        InputA.OnChange([&](auto v){Output.Set(~v);});
-    }
-};
-
-struct NorGate : public DualGate
-{
-    NorGate()
-    {
-        InputA.Chain(_or.InputA);
-        InputB.Chain(_or.InputB);
-
-        _or.Output.Chain(_not.InputA);
-        _not.Output.Chain(this->Output);
-    }
-private:
-    OrGate _or;
-    NotGate _not;
-};
-
-struct AoiGate : public TripletGate
-{
-    AoiGate()
-    {
-        InputA.Chain(_and.InputA);
-        InputB.Chain(_and.InputB);
-        
-        _and.Output.Chain(_nor.InputA);
-        InputC.Chain(_nor.InputB);
-        
-        _nor.Output.Chain(this->Output);
-    }
-private:
-    NorGate _nor;
-    AndGate _and;
-};
-
-
-struct XorGate : public DualGate
-{
-    XorGate()
-    {
-        InputA.Chain(_nor.InputA);
-        InputA.Chain(_aoi.InputB);
-
-        InputB.Chain(_nor.InputB);
-        InputB.Chain(_aoi.InputC);
-
-        _nor.Output.Chain(_aoi.InputA);
-
-        _aoi.Output.Chain(this->Output);
-    }
+    explicit NotGate(Gate* i) : in_(i), nand_(i, i) {}
+    bool eval() const override { return nand_.eval(); }
 
 private:
-    AoiGate _aoi;
-    NorGate _nor;
+    Gate* in_;
+    NandGate nand_;
 };
 
-}
 
-#endif
+struct AndGate : public Gate
+{
+    AndGate(Gate* a, Gate* b) : anandb_(a, b), nanandb_(&anandb_) {}
+    bool eval() const override { return nanandb_.eval(); }
+
+private:
+    NandGate anandb_;
+    NotGate  nanandb_;
+};
+
+
+struct OrGate : public Gate
+{
+    OrGate(Gate* a, Gate* b) : na_(a), nb_(b), and_(&na_, &nb_), not_(&and_) {}
+    bool eval() const override { return not_.eval(); }
+
+private:
+    NotGate na_;
+    NotGate nb_;
+    AndGate and_;
+    NotGate not_;
+};
+
+
+struct NorGate : public Gate
+{
+    NorGate(Gate* a, Gate* b) : aob_(a, b), naob_(&aob_) {}
+    bool eval() const override { return naob_.eval(); }
+
+private:
+    OrGate  aob_;
+    NotGate naob_;
+};
+
+
+struct AOIGate : public Gate
+{
+    AOIGate(Gate* a, Gate* b, Gate* c) : aab_(a, b), aab_oc_(&aab_, c), n_aab_oc_(&aab_oc_) {}
+    bool eval() const override { return n_aab_oc_.eval(); }
+
+private:
+    AndGate aab_;
+    OrGate  aab_oc_;
+    NotGate n_aab_oc_;
+};
+
+
+struct XorGate : public Gate
+{
+    XorGate(Gate* a, Gate* b)
+        : na_(a), nb_(b), naanb_(&na_, &nb_), aoi_abnaanb_(a, b, &naanb_) {}
+    bool eval() const override { return aoi_abnaanb_.eval(); }
+
+private:
+    NotGate na_;
+    NotGate nb_;
+    AndGate naanb_;
+    AOIGate aoi_abnaanb_;
+};
+
+} // namespace CPU
