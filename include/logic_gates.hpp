@@ -1,106 +1,166 @@
+#ifndef LOGIC_GATES_HPP
+#define LOGIC_GATES_HPP
 
-namespace CPU
+#include <bitset>
+#include <iterator>
+#include <stdexcept>
+#include <vector>
+#include <algorithm>
+namespace ln
 {
 
+typedef std::bitset<1> input_t;
+typedef std::bitset<1> output_t;
 
-struct Gate
+
+class Output
 {
-    virtual ~Gate() = default;
-    virtual bool eval() const = 0;
+public:
+    void Set(output_t val)
+    {
+
+    }
 };
 
-
-struct Input : public Gate
+class Input
 {
-    explicit Input(bool v = false) : val_(v) {}
-    bool eval() const override { return val_; }
-    void set(bool v) { val_ = v; }
+public:
+    void Set(input_t val)
+    {
+        _input = val;
+        for (const auto i : _connectedInputs)
+        {
+            i->Set(val);
+        }
+    }
+
+    static void Connect(Input& left, Input& right)
+    {
+        if (AreConnected(left, right))
+        {
+            throw std::runtime_error("inputs are already connected");
+        }
+
+        left._connectedInputs.push_back(&right);
+        right._inputsToDisconnectFromWhenDestoryed.push_back(&left);
+    }
+
+    static bool AreConnected(const Input& left, const Input& right)
+    {
+        const auto& linputs = left._connectedInputs;
+        const auto& rinputs = right._connectedInputs;
+
+        return 
+            std::find(linputs.begin(), linputs.end(), &right) != linputs.end() ||
+            std::find(rinputs.begin(), rinputs.end(), &left) != rinputs.end()  ;
+    }
+
+    static void Disconnect(Input& it, Input& from)
+    {
+
+    }
+
+    
+    ~Input()
+    {
+        
+    }
+    
+protected:
+    static std::vector<Input*>::iterator Find(Input* item)
+
+    input_t _input;
+    std::vector<Input*> _connectedInputs;
+    std::vector<Input*> _inputsToDisconnectFromWhenDestoryed;
 
 private:
-    bool val_;
+    const std::vector<Input*>& connectedInputs()
+    {
+        return _connectedInputs;
+    }
+
+    bool isConnectedTo(const Input& other)
+    {
+        bool isThisOneConnectedToOther =
+            std::find(other._connectedInputs.begin(), other._connectedInputs.end(), this) != other._connectedInputs.end();
+        
+        if (isThisOneConnectedToOther)
+        {
+            return true;
+        }
+
+        bool isOtherConnectedToThis =
+            std::find(_connectedInputs.begin(), _connectedInputs.end(), &other) != _connectedInputs.end();
+
+        return isOtherConnectedToThis;
+    }
 };
 
-
-struct NandGate : public Gate
+class IGate
 {
-    NandGate(Gate* in1, Gate* in2) : a_(in1), b_(in2) {}
-    bool eval() const override { return !(a_->eval() && b_->eval()); }
+public:
+    inline void SetInputA(input_t a)
+    {
+        m_inputA = a;
+        m_output = UpdateOutput();
+    }
 
-private:
-    Gate* a_;
-    Gate* b_;
+    virtual output_t Output() const = 0;
+    virtual void ConnectOutputTo(IGate& other);
+    virtual void ConnectInputAToOtherGateOutput(IGate& other)
+    {
+        
+    }
+
+protected:
+    output_t UpdateOutput();
+
+    input_t m_inputA;
+    output_t m_output;
 };
 
-
-struct NotGate : public Gate
+class IDualGate : public IGate
 {
-    explicit NotGate(Gate* i) : in_(i), nand_(i, i) {}
-    bool eval() const override { return nand_.eval(); }
+public:
+    virtual void SetInputB(input_t b) = 0;
+    virtual void ConnectInputBTo(IGate& other);
 
-private:
-    Gate* in_;
-    NandGate nand_;
+protected:
+    input_t m_inputB;
 };
 
 
-struct AndGate : public Gate
+class OrGate : public IDualGate
 {
-    AndGate(Gate* a, Gate* b) : anandb_(a, b), nanandb_(&anandb_) {}
-    bool eval() const override { return nanandb_.eval(); }
+public:
+    virtual output_t Output()
+    {
 
-private:
-    NandGate anandb_;
-    NotGate  nanandb_;
+    }
+
+    virtual void ConnectOutputTo(IGate& other) override
+    {
+
+    }
+
+    virtual void ConnectInputATo(IGate& other) override
+    {
+
+    }
+
+    virtual void ConnectInputBTo(IGate& other) override
+    {
+
+    }    
+protected:
+    
+    inline output_t UpdateOutput()
+    {
+        return m_inputA | m_inputB;
+    }
 };
 
-
-struct OrGate : public Gate
-{
-    OrGate(Gate* a, Gate* b) : na_(a), nb_(b), and_(&na_, &nb_), not_(&and_) {}
-    bool eval() const override { return not_.eval(); }
-
-private:
-    NotGate na_;
-    NotGate nb_;
-    AndGate and_;
-    NotGate not_;
-};
+}
 
 
-struct NorGate : public Gate
-{
-    NorGate(Gate* a, Gate* b) : aob_(a, b), naob_(&aob_) {}
-    bool eval() const override { return naob_.eval(); }
-
-private:
-    OrGate  aob_;
-    NotGate naob_;
-};
-
-
-struct AOIGate : public Gate
-{
-    AOIGate(Gate* a, Gate* b, Gate* c) : aab_(a, b), aab_oc_(&aab_, c), n_aab_oc_(&aab_oc_) {}
-    bool eval() const override { return n_aab_oc_.eval(); }
-
-private:
-    AndGate aab_;
-    OrGate  aab_oc_;
-    NotGate n_aab_oc_;
-};
-
-
-struct XorGate : public Gate
-{
-    XorGate(Gate* a, Gate* b)
-        : na_(a), nb_(b), naanb_(&na_, &nb_), aoi_abnaanb_(a, b, &naanb_) {}
-    bool eval() const override { return aoi_abnaanb_.eval(); }
-
-private:
-    NotGate na_;
-    NotGate nb_;
-    AndGate naanb_;
-    AOIGate aoi_abnaanb_;
-};
-
-} // namespace CPU
+#endif
