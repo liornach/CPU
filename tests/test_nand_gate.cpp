@@ -1,27 +1,12 @@
 #include "gates/nand_gate.hpp"
+#include "test_util.hpp"
 
 #include <bitset>
-#include <iostream>
-
-namespace
-{
-
-int g_failures = 0;
-
-void Check(bool condition, const char* description)
-{
-    if (!condition)
-    {
-        std::cerr << "FAILED: " << description << '\n';
-        ++g_failures;
-    }
-}
-
-}
 
 int main()
 {
     using ln::NandGate;
+    using namespace ln::test;
 
     Check(NandGate::Compute(std::bitset<1>(0), std::bitset<1>(0)) == std::bitset<1>(1), "NAND(0, 0) == 1");
     Check(NandGate::Compute(std::bitset<1>(0), std::bitset<1>(1)) == std::bitset<1>(1), "NAND(0, 1) == 1");

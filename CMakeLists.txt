@@ -6,7 +6,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 enable_testing()
 
-add_executable(test_nand_gate tests/test_nand_gate.cpp)
-target_include_directories(test_nand_gate PRIVATE include)
+set(GATE_TESTS
+    nand_gate
+    not_gate
+    and_gate
+    or_gate
+    nor_gate
+    xor_gate
+)
 
-add_test(NAME test_nand_gate COMMAND test_nand_gate)
+foreach(gate ${GATE_TESTS})
+    set(test_name test_${gate})
+    add_executable(${test_name} tests/${test_name}.cpp)
+    target_include_directories(${test_name} PRIVATE include tests)
+    add_test(NAME ${test_name} COMMAND ${test_name})
+endforeach()
