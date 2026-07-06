@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Extended SAP-1 — CPU Spec Sheet</title>
+<style>
+  :root {
+    color-scheme: light dark;
+
+    --blueprint-deep: #0e2e4d;
+    --blueprint-paper: #eef3f8;
+    --copper: #c97a3b;
+    --good: #3f9d76;
+    --planned: #c99a2e;
+
+    --bg: var(--blueprint-paper);
+    --bg-raised: #ffffff;
+    --ink: var(--blueprint-deep);
+    --ink-soft: #3d5872;
+    --line: var(--blueprint-deep);
+    --line-soft: #b9cede;
+    --accent: var(--copper);
+    --accent-ink: #ffffff;
+    --shadow: 0 1px 0 rgba(14, 46, 77, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: var(--blueprint-deep);
+      --bg-raised: #123a5e;
+      --ink: #dcedff;
+      --ink-soft: #9fc0dc;
+      --line: #bfe0ff;
+      --line-soft: #2c5679;
+      --accent: #e39a56;
+      --accent-ink: #0e2e4d;
+      --shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: var(--blueprint-deep);
+    --bg-raised: #123a5e;
+    --ink: #dcedff;
+    --ink-soft: #9fc0dc;
+    --line: #bfe0ff;
+    --line-soft: #2c5679;
+    --accent: #e39a56;
+    --accent-ink: #0e2e4d;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  }
+
+  :root[data-theme="light"] {
+    --bg: var(--blueprint-paper);
+    --bg-raised: #ffffff;
+    --ink: var(--blueprint-deep);
+    --ink-soft: #3d5872;
+    --line: var(--blueprint-deep);
+    --line-soft: #b9cede;
+    --accent: var(--copper);
+    --accent-ink: #ffffff;
+    --shadow: 0 1px 0 rgba(14, 46, 77, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .mono {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1, h2, h3, .label {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    text-wrap: balance;
+  }
+
+  a { color: var(--accent); }
+
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  .page {
+    max-width: 68rem;
+    margin: 0 auto;
+    padding: 1.25rem 1.25rem 4rem;
+  }
+
+  /* ---------- Masthead ---------- */
+
+  .masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.5rem 0 1rem;
+    border-bottom: 2px solid var(--line);
+  }
+
+  .masthead .eyebrow {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 0.35rem;
+  }
+
+  .masthead h1 {
+    font-size: clamp(1.35rem, 1rem + 1.6vw, 2rem);
+    margin: 0 0 0.4rem;
+    font-weight: 700;
+  }
+
+  .masthead p {
+    margin: 0;
+    max-width: 42rem;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+  }
+
+  .theme-toggle {
+    flex-shrink: 0;
+    background: var(--bg-raised);
+    border: 1px solid var(--line-soft);
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+
+  /* ---------- Status banner ---------- */
+
+  .status-banner {
+    margin-top: 1.25rem;
+    padding: 0.9rem 1rem;
+    background: var(--bg-raised);
+    border: 1px solid var(--line-soft);
+    border-left: 4px solid var(--accent);
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+  }
+
+  .status-banner strong { color: var(--ink); }
+
+  /* ---------- Stat strip ---------- */
+
+  .stats {
+    margin-top: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: 1px;
+    background: var(--line-soft);
+    border: 1px solid var(--line-soft);
+  }
+
+  .stat {
+    background: var(--bg-raised);
+    padding: 0.9rem 1rem;
+  }
+
+  .stat .n {
+    font-size: 1.3rem;
+    font-weight: 700;
+    display: block;
+  }
+
+  .stat .l {
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .stat.good .n { color: var(--good); }
+
+  /* ---------- Section headings ---------- */
+
+  section.block { margin-top: 3rem; }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  .section-head h2 {
+    font-size: 1.1rem;
+    margin: 0;
+  }
+
+  .section-head .hint {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- Schematic ---------- */
+
+  .schematic {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr) 2.25rem;
+    grid-template-areas:
+      "pc   ir   cu   cu   ctrl"
+      "abus abus abus abus ctrl"
+      "mar  ram  ram  ram  ctrl"
+      "dbus dbus dbus dbus ctrl"
+      "acc  breg alu  out  ctrl";
+    gap: 0.5rem;
+    border: 1px solid var(--line-soft);
+    padding: 0.75rem;
+    background: var(--bg-raised);
+  }
+
+  @media (max-width: 40rem) {
+    .schematic {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "pc" "ir" "cu"
+        "abus"
+        "mar" "ram"
+        "dbus"
+        "acc" "breg" "alu" "out"
+        "ctrl";
+    }
+    .bus.vertical {
+      writing-mode: horizontal-tb;
+      min-height: 2.25rem;
+    }
+  }
+
+  .node {
+    border: 1px solid var(--line);
+    background: var(--bg);
+    padding: 0.7rem 0.6rem;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-height: 3.75rem;
+  }
+
+  .node:hover, .node:focus-visible {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+  }
+
+  .node:hover .node-full, .node:focus-visible .node-full { color: inherit; }
+
+  .node-short {
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+
+  .node-full {
+    font-size: 0.7rem;
+    color: var(--ink-soft);
+  }
+
+  #node-pc { grid-area: pc; }
+  #node-ir { grid-area: ir; }
+  #node-cu { grid-area: cu; }
+  #node-mar { grid-area: mar; }
+  #node-ram { grid-area: ram; }
+  #node-acc { grid-area: acc; }
+  #node-breg { grid-area: breg; }
+  #node-alu { grid-area: alu; }
+  #node-out { grid-area: out; }
+
+  .bus {
+    border: 1px solid var(--line);
+    background: var(--line-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink);
+    cursor: pointer;
+    padding: 0.4rem;
+  }
+
+  .bus:hover, .bus:focus-visible {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+  }
+
+  #bus-addr { grid-area: abus; }
+  #bus-data { grid-area: dbus; }
+  #bus-ctrl {
+    grid-area: ctrl;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
+
+  /* ---------- Inspector panel ---------- */
+
+  .scrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 20, 34, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 10;
+  }
+
+  .scrim.open { opacity: 1; pointer-events: auto; }
+
+  .inspector {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: min(24rem, 100%);
+    background: var(--bg-raised);
+    border-left: 1px solid var(--line-soft);
+    box-shadow: -8px 0 24px rgba(6, 20, 34, 0.15);
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    z-index: 11;
+    padding: 1.25rem;
+    overflow-y: auto;
+  }
+
+  .inspector.open { transform: translateX(0); }
+
+  .inspector-close {
+    background: none;
+    border: 1px solid var(--line-soft);
+    padding: 0.35rem 0.6rem;
+    cursor: pointer;
+    float: right;
+  }
+
+  .inspector h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+    clear: both;
+  }
+
+  .inspector .status-pill { margin-bottom: 0.75rem; }
+
+  .inspector p {
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+  }
+
+  .inspector h4 {
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 1.25rem 0 0.4rem;
+  }
+
+  .gate-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+
+  .gate-tag {
+    font-size: 0.75rem;
+    border: 1px solid var(--line-soft);
+    padding: 0.15rem 0.5rem;
+  }
+
+  .gate-tag.shipped {
+    border-color: var(--good);
+    color: var(--good);
+  }
+
+  /* ---------- Status pill ---------- */
+
+  .status-pill {
+    display: inline-block;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid currentColor;
+  }
+
+  .status-pill.core { color: var(--good); }
+  .status-pill.planned { color: var(--planned); }
+
+  /* ---------- ISA table ---------- */
+
+  .isa-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+
+  .isa-search {
+    flex: 1 1 14rem;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--line-soft);
+    background: var(--bg-raised);
+    color: var(--ink);
+    font-size: 0.9rem;
+  }
+
+  .filter-chip {
+    background: var(--bg-raised);
+    border: 1px solid var(--line-soft);
+    padding: 0.5rem 0.8rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .filter-chip[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line-soft);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    min-width: 32rem;
+  }
+
+  thead th {
+    text-align: left;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--line-soft);
+    background: var(--bg-raised);
+    position: sticky;
+    top: 0;
+  }
+
+  tbody td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  tbody tr.is-hidden { display: none; }
+
+  .no-results {
+    padding: 1rem;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+  }
+
+  /* ---------- Sample program ---------- */
+
+  .sample {
+    margin-top: 1.5rem;
+    border: 1px solid var(--line-soft);
+    background: var(--bg-raised);
+    padding: 1rem;
+  }
+
+  .sample h3 {
+    margin: 0 0 0.6rem;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+  }
+
+  .sample-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+    gap: 0.4rem;
+  }
+
+  .sample-cell {
+    border: 1px solid var(--line-soft);
+    padding: 0.4rem 0.5rem;
+    font-size: 0.78rem;
+  }
+
+  .sample-cell .addr { color: var(--ink-soft); display: block; }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line-soft);
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">liornach/CPU — architecture reference</p>
+      <h1>Extended SAP-1</h1>
+      <p>A Simple-As-Possible-1 core (Malvino &amp; Brown) stretched to an 8-bit address bus and a memory-mapped ASCII output port, so it can run programs like an unrolled &ldquo;Hello, World!&rdquo; instead of just driving a 7-segment digit.</p>
+    </div>
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle color theme">Toggle theme</button>
+  </header>
+
+  <p class="status-banner">
+    <strong>Implementation status:</strong> only the six primitive gates below are built and tested today
+    (<code class="mono">include/gates/</code> — <code class="mono">NandGate</code>, <code class="mono">NotGate</code>,
+    <code class="mono">AndGate</code>, <code class="mono">OrGate</code>, <code class="mono">NorGate</code>,
+    <code class="mono">XorGate</code>). Everything in the schematic below — registers, the ALU, the control unit,
+    the buses — is the <em>target</em> design those gates are meant to be assembled into, not code that exists yet.
+  </p>
+
+  <section class="stats" aria-label="Key architecture metrics">
+    <div class="stat"><span class="n mono">8-bit</span><span class="l">Data bus</span></div>
+    <div class="stat"><span class="n mono">8-bit · 256B</span><span class="l">Address bus / RAM</span></div>
+    <div class="stat"><span class="n mono">2 bytes</span><span class="l">Instruction format</span></div>
+    <div class="stat"><span class="n mono">7</span><span class="l">Registers</span></div>
+    <div class="stat"><span class="n mono">10</span><span class="l">ISA opcodes (7 core · 3 planned)</span></div>
+    <div class="stat good"><span class="n mono">6 / 6</span><span class="l">Primitive gates shipped</span></div>
+  </section>
+
+  <section class="block" aria-label="CPU schematic">
+    <div class="section-head">
+      <h2>Schematic</h2>
+      <span class="hint">Tap any block for its gate-level breakdown</span>
+    </div>
+    <div class="schematic" id="schematic"></div>
+  </section>
+
+  <section class="block" aria-label="Instruction set reference">
+    <div class="section-head">
+      <h2>ISA reference</h2>
+      <span class="hint">2-byte instructions: opcode byte, then an operand byte where one applies</span>
+    </div>
+
+    <div class="isa-controls">
+      <input class="isa-search" type="search" id="isa-search" placeholder="Search mnemonic or description…" aria-label="Search instructions" />
+      <button class="filter-chip" data-filter="all" aria-pressed="true" type="button">All</button>
+      <button class="filter-chip" data-filter="core" aria-pressed="false" type="button">Core (v1)</button>
+      <button class="filter-chip" data-filter="planned" aria-pressed="false" type="button">Planned (v2)</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Opcode</th>
+            <th>Mnemonic</th>
+            <th>Operand</th>
+            <th>Description</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="isa-body"></tbody>
+      </table>
+      <p class="no-results" id="isa-empty" hidden>No instructions match that search.</p>
+    </div>
+
+    <div class="sample">
+      <h3>Sample program — printing &ldquo;Hi&rdquo; with core (v1) opcodes only</h3>
+      <div class="sample-grid mono" id="sample-grid"></div>
+    </div>
+  </section>
+
+  <footer>
+    Built from the plan discussed for this repository: an unrolled &ldquo;Hello, World!&rdquo; program needs no loop
+    instructions at all, so <code class="mono">JMP</code>/<code class="mono">JZ</code>/<code class="mono">INC</code>
+    stay marked &ldquo;planned&rdquo; until a real looping program calls for them.
+  </footer>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="inspector" id="inspector" aria-hidden="true" aria-label="Component detail">
+  <button class="inspector-close" id="inspector-close" type="button">Close</button>
+  <h3 id="inspector-title"></h3>
+  <span class="status-pill planned" id="inspector-status">Planned</span>
+  <p id="inspector-summary"></p>
+  <h4>Built from</h4>
+  <p id="inspector-gates"></p>
+  <h4>Gate primitives used</h4>
+  <div class="gate-tags" id="inspector-tags"></div>
+</aside>
+
+<script>
+(function () {
+  "use strict";
+
+  var SHIPPED = ["NandGate", "NotGate", "AndGate", "OrGate", "NorGate", "XorGate"];
+
+  var components = [
+    { id: "pc", area: "node-pc", short: "PC", full: "Program Counter",
+      summary: "8-bit register holding the address of the next instruction, with its own incrementer.",
+      gates: "8× D flip-flops (cross-coupled NAND latches gated by the clock) hold the bits. A ripple incrementer built from half adders adds 1 each fetch cycle.",
+      uses: ["NandGate", "XorGate", "AndGate"] },
+    { id: "ir", area: "node-ir", short: "IR", full: "Instruction Register",
+      summary: "Latches the opcode byte fetched from memory so the Control Unit can decode it while the PC moves on.",
+      gates: "8× D flip-flops, the same construction as every other register in this design.",
+      uses: ["NandGate"] },
+    { id: "cu", area: "node-cu", short: "CU", full: "Control Unit",
+      summary: "Hardwired T-state sequencer that turns {opcode, T-state} into the control-line signals every other block listens to.",
+      gates: "A ring counter (chained flip-flops) marks T1–T6. A decoder — AND gates fed by NOT-inverted opcode bits — maps the current opcode and T-state to individual control lines (PC-out, MAR-in, RAM-out, IR-in, ACC-in, ALU-op, and so on).",
+      uses: ["AndGate", "NotGate", "NandGate"] },
+    { id: "mar", area: "node-mar", short: "MAR", full: "Memory Address Register",
+      summary: "Holds the address currently being read from or written to memory.",
+      gates: "8× D flip-flops feeding the address bus.",
+      uses: ["NandGate"] },
+    { id: "ram", area: "node-ram", short: "RAM · 256×8", full: "Main Memory",
+      summary: "The whole address space — program bytes and string data such as \"Hello, World!\" share one 256-byte memory, von Neumann style.",
+      gates: "256 addressable 8-bit registers, each selected by an 8-to-256 decoder built from AND and NOT gates reading the address bus.",
+      uses: ["AndGate", "NotGate", "NandGate"] },
+    { id: "acc", area: "node-acc", short: "ACC", full: "Accumulator",
+      summary: "The A register — one ALU operand, and the destination of every LDA/ADD/SUB result.",
+      gates: "8× D flip-flops whose input is wired to the ALU output rather than the raw bus.",
+      uses: ["NandGate"] },
+    { id: "breg", area: "node-breg", short: "B", full: "B Register",
+      summary: "Holds the second ALU operand — whatever ADD or SUB last loaded from memory.",
+      gates: "8× D flip-flops, feeding the ALU's B input directly.",
+      uses: ["NandGate"] },
+    { id: "alu", area: "node-alu", short: "ALU · Flags", full: "Arithmetic Logic Unit",
+      summary: "Adds or subtracts ACC and B in two's complement, and raises the Zero flag the planned JZ instruction would read.",
+      gates: "8× 1-bit full adders chained in ripple-carry. Each full adder is 2 half adders — an XOR gate for the sum bit, an AND gate for the carry — plus an OR gate combining carries. Subtraction reuses the same adder chain by XOR-ing every B bit with the SUB control line and feeding it in as carry-in, so no separate subtractor circuit is needed.",
+      uses: ["XorGate", "AndGate", "OrGate"] },
+    { id: "out", area: "node-out", short: "OUT", full: "Output Register",
+      summary: "Memory-mapped ASCII output port — whatever byte OUT sends here is what the terminal prints.",
+      gates: "8× D flip-flops wired to a host-side character display instead of back onto the bus.",
+      uses: ["NandGate"] },
+    { id: "bus-addr", area: "bus-addr", short: "Address Bus", full: "Address Bus",
+      summary: "8 lines carrying the address the Control Unit wants read or written.",
+      gates: "Whichever register drives it (PC or MAR) does so through a tri-state buffer — an AND gate gated by that register's own enable line — so only one source ever drives the bus at once.",
+      uses: ["AndGate"] },
+    { id: "bus-data", area: "bus-data", short: "Data Bus", full: "Data Bus",
+      summary: "8 shared lines nearly everything reads from or writes to — the classic SAP-1 single-bus design.",
+      gates: "The same tri-state-via-AND-gate trick as the address bus, multiplied across every register that can drive it.",
+      uses: ["AndGate"] },
+    { id: "bus-ctrl", area: "bus-ctrl", short: "Control Bus", full: "Control Bus",
+      summary: "The individual enable/read/write lines the Control Unit fans out to every block on this sheet.",
+      gates: "Not a shared bus electrically — just the direct decoder outputs from the Control Unit, one wire per signal.",
+      uses: ["AndGate", "NotGate"] }
+  ];
+
+  var isa = [
+    { op: "0x00", mnemonic: "NOP", operand: "—", desc: "No operation; only advances the Program Counter.", status: "core" },
+    { op: "0x01", mnemonic: "LDA", operand: "addr", desc: "Load the Accumulator from memory[addr].", status: "core" },
+    { op: "0x02", mnemonic: "ADD", operand: "addr", desc: "Add memory[addr] into the Accumulator.", status: "core" },
+    { op: "0x03", mnemonic: "SUB", operand: "addr", desc: "Subtract memory[addr] from the Accumulator.", status: "core" },
+    { op: "0x04", mnemonic: "STA", operand: "addr", desc: "Store the Accumulator to memory[addr].", status: "core" },
+    { op: "0x05", mnemonic: "OUT", operand: "—", desc: "Send the Accumulator to the ASCII output port.", status: "core" },
+    { op: "0x06", mnemonic: "HLT", operand: "—", desc: "Stop the clock.", status: "core" },
+    { op: "0x07", mnemonic: "JMP", operand: "addr", desc: "Set the Program Counter to addr (unconditional jump).", status: "planned" },
+    { op: "0x08", mnemonic: "JZ", operand: "addr", desc: "Jump to addr only if the ALU's Zero flag is set.", status: "planned" },
+    { op: "0x09", mnemonic: "INC", operand: "—", desc: "Increment the Accumulator by 1, for pointer-walking loops.", status: "planned" }
+  ];
+
+  // ---------- Schematic ----------
+
+  var schematic = document.getElementById("schematic");
+  components.forEach(function (c) {
+    var el = document.createElement("button");
+    el.type = "button";
+    el.id = c.area;
+    el.className = c.id.indexOf("bus-") === 0 ? "bus" : "node";
+    el.dataset.id = c.id;
+    if (c.id.indexOf("bus-") === 0) {
+      el.textContent = c.short;
+    } else {
+      el.innerHTML = '<span class="node-short">' + c.short + '</span><span class="node-full">' + c.full + '</span>';
+    }
+    schematic.appendChild(el);
+  });
+
+  // ---------- Inspector panel ----------
+
+  var inspector = document.getElementById("inspector");
+  var scrim = document.getElementById("scrim");
+  var lastFocused = null;
+
+  function openInspector(id) {
+    var c = components.filter(function (x) { return x.id === id; })[0];
+    if (!c) return;
+
+    document.getElementById("inspector-title").textContent = c.full;
+    document.getElementById("inspector-summary").textContent = c.summary;
+    document.getElementById("inspector-gates").textContent = c.gates;
+
+    var tagsEl = document.getElementById("inspector-tags");
+    tagsEl.innerHTML = "";
+    c.uses.forEach(function (gate) {
+      var tag = document.createElement("span");
+      var shipped = SHIPPED.indexOf(gate) !== -1;
+      tag.className = "gate-tag mono" + (shipped ? " shipped" : "");
+      tag.textContent = gate + (shipped ? " ✓ shipped" : "");
+      tagsEl.appendChild(tag);
+    });
+
+    lastFocused = document.activeElement;
+    inspector.classList.add("open");
+    inspector.setAttribute("aria-hidden", "false");
+    scrim.classList.add("open");
+    document.getElementById("inspector-close").focus();
+  }
+
+  function closeInspector() {
+    inspector.classList.remove("open");
+    inspector.setAttribute("aria-hidden", "true");
+    scrim.classList.remove("open");
+    if (lastFocused) lastFocused.focus();
+  }
+
+  schematic.addEventListener("click", function (e) {
+    var target = e.target.closest("[data-id]");
+    if (target) openInspector(target.dataset.id);
+  });
+
+  document.getElementById("inspector-close").addEventListener("click", closeInspector);
+  scrim.addEventListener("click", closeInspector);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && inspector.classList.contains("open")) closeInspector();
+  });
+
+  // ---------- ISA table ----------
+
+  var isaBody = document.getElementById("isa-body");
+  isa.forEach(function (row) {
+    var tr = document.createElement("tr");
+    tr.dataset.status = row.status;
+    tr.dataset.search = (row.mnemonic + " " + row.desc).toLowerCase();
+    tr.innerHTML =
+      '<td class="mono">' + row.op + '</td>' +
+      '<td class="mono">' + row.mnemonic + '</td>' +
+      '<td class="mono">' + row.operand + '</td>' +
+      '<td>' + row.desc + '</td>' +
+      '<td><span class="status-pill ' + row.status + '">' + (row.status === "core" ? "Core (v1)" : "Planned (v2)") + '</span></td>';
+    isaBody.appendChild(tr);
+  });
+
+  var searchInput = document.getElementById("isa-search");
+  var filterChips = Array.prototype.slice.call(document.querySelectorAll(".filter-chip"));
+  var activeFilter = "all";
+  var emptyMsg = document.getElementById("isa-empty");
+
+  function applyFilters() {
+    var query = searchInput.value.trim().toLowerCase();
+    var visibleCount = 0;
+    Array.prototype.forEach.call(isaBody.querySelectorAll("tr"), function (tr) {
+      var matchesFilter = activeFilter === "all" || tr.dataset.status === activeFilter;
+      var matchesQuery = !query || tr.dataset.search.indexOf(query) !== -1;
+      var visible = matchesFilter && matchesQuery;
+      tr.classList.toggle("is-hidden", !visible);
+      if (visible) visibleCount++;
+    });
+    emptyMsg.hidden = visibleCount !== 0;
+  }
+
+  searchInput.addEventListener("input", applyFilters);
+  filterChips.forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      activeFilter = chip.dataset.filter;
+      filterChips.forEach(function (c) { c.setAttribute("aria-pressed", String(c === chip)); });
+      applyFilters();
+    });
+  });
+
+  // ---------- Sample program ----------
+
+  var sample = [
+    { addr: "0x00", byte: "0x01", note: "LDA" },
+    { addr: "0x01", byte: "0x10", note: "→ addr 0x10" },
+    { addr: "0x02", byte: "0x05", note: "OUT" },
+    { addr: "0x03", byte: "0x01", note: "LDA" },
+    { addr: "0x04", byte: "0x11", note: "→ addr 0x11" },
+    { addr: "0x05", byte: "0x05", note: "OUT" },
+    { addr: "0x06", byte: "0x06", note: "HLT" },
+    { addr: "0x10", byte: "0x48", note: "'H'" },
+    { addr: "0x11", byte: "0x69", note: "'i'" }
+  ];
+  var sampleGrid = document.getElementById("sample-grid");
+  sample.forEach(function (s) {
+    var cell = document.createElement("div");
+    cell.className = "sample-cell";
+    cell.innerHTML = '<span class="addr">' + s.addr + '</span>' + s.byte + ' <span style="opacity:.7">' + s.note + '</span>';
+    sampleGrid.appendChild(cell);
+  });
+
+  // ---------- Theme toggle ----------
+
+  var root = document.documentElement;
+  var toggle = document.getElementById("theme-toggle");
+  var stored = null;
+  try { stored = localStorage.getItem("cpu-dashboard-theme"); } catch (e) {}
+  if (stored) root.setAttribute("data-theme", stored);
+
+  toggle.addEventListener("click", function () {
+    var current = root.getAttribute("data-theme");
+    var isDark = current
+      ? current === "dark"
+      : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var next = isDark ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("cpu-dashboard-theme", next); } catch (e) {}
+  });
+
+  applyFilters();
+})();
+</script>
+</body>
+</html>
