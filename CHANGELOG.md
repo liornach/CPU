@@ -12,4 +12,4 @@
   `NotGate`, `AndGate`, `OrGate`, `NorGate`, `XorGate`), each with its own truth-table test.
 
   - Removed by: Claude Code
-  - Commit: _pending_
+  - Commit: e035c0a
